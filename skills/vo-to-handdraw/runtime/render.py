@@ -208,7 +208,7 @@ def asset_library():
     }
 
 
-def load_hand(asset_path: Path, size=160):
+def load_hand(asset_path: Path, size=105):
     if not asset_path.exists():
         return None, (0,0)
     png = cairosvg.svg2png(bytestring=asset_path.read_bytes(), output_width=size)
@@ -319,13 +319,15 @@ def render(spec_path: Path, out_path: Path, audit_override=None):
                     d = base_path[min(len(base_path)-1, idx+1)] - base_path[idx]
                     ang = math.degrees(math.atan2(d[1], d[0])) if np.linalg.norm(d) > 1e-9 else 0.0
                     ang = max(-24, min(24, ang))
+                    raw_actor_paths = [np.array(p, dtype=float) for p in assets[a['asset']]]
+                    all_actor_points = np.vstack(raw_actor_paths)
+                    actor_center = all_actor_points.mean(axis=0)
+                    rad = math.radians(ang)
+                    rot = np.array([[math.cos(rad), -math.sin(rad)],[math.sin(rad), math.cos(rad)]])
                     actor_paths = []
-                    for p in assets[a['asset']]:
-                        arr = np.array(p, dtype=float)
-                        arr = arr - arr.mean(axis=0)
+                    for actor_path in raw_actor_paths:
+                        arr = actor_path - actor_center
                         arr *= float(a.get('scale',1.0))
-                        rad = math.radians(ang)
-                        rot = np.array([[math.cos(rad), -math.sin(rad)],[math.sin(rad), math.cos(rad)]])
                         arr = arr @ rot.T + np.array([pt[0], pt[1] + float(a.get('offset_y', -24))])
                         actor_paths.append(arr)
                     for p in actor_paths:
