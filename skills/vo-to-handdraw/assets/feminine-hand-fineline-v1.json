@@ -1,15 +1,9 @@
 {
-  "asset_id": "feminine-hand-fineline-v1",
+  "asset_id": "feminine-hand-fineline-v2",
   "svg": "feminine-hand-fineline-v1.svg",
-  "tip_anchor_viewbox": [
-    27,
-    187
-  ],
-  "viewbox": [
-    320,
-    220
-  ],
-  "sha256": "ed0210045a6a55105e8de39d78560c88aff36c1b058922c99cbc5b1e1ef58d7e",
+  "tip_anchor_viewbox": [22, 162],
+  "viewbox": [320, 190],
+  "sha256": "bd22a5e9325925b51999d2fd197e23c4a25458ed0052458e8d43276f5551b45a",
   "license": "original project asset",
   "transparent_background": true
 }
