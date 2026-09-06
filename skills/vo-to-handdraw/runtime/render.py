@@ -211,12 +211,32 @@ def asset_library():
 def load_hand(asset_path: Path, size=105):
     if not asset_path.exists():
         return None, (0,0)
-    png = cairosvg.svg2png(bytestring=asset_path.read_bytes(), output_width=size)
-    arr = np.frombuffer(png, np.uint8)
-    img = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
+    suffix = asset_path.suffix.lower()
+    if suffix == '.svg':
+        png = cairosvg.svg2png(bytestring=asset_path.read_bytes(), output_width=size)
+        arr = np.frombuffer(png, np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
+    elif suffix in {'.png', '.webp'}:
+        img = cv2.imread(str(asset_path), cv2.IMREAD_UNCHANGED)
+        if img is None:
+            raise ValueError(f'cannot load hand asset: {asset_path}')
+        if img.shape[2] == 3:
+            alpha = np.full(img.shape[:2] + (1,), 255, dtype=np.uint8)
+            img = np.concatenate([img, alpha], axis=2)
+        if size and img.shape[1] != size:
+            scale = size / float(img.shape[1])
+            img = cv2.resize(img, (size, max(1, int(round(img.shape[0]*scale)))), interpolation=cv2.INTER_AREA)
+    else:
+        raise ValueError(f'unsupported hand asset type: {asset_path.suffix}')
+
     meta_path = asset_path.with_suffix('.json')
     if meta_path.exists():
         meta=json.loads(meta_path.read_text(encoding='utf-8'))
+        if 'tip_anchor_px' in meta and 'native_size' in meta:
+            native_w=float(meta['native_size'][0])
+            scale=img.shape[1]/native_w
+            anchor=meta['tip_anchor_px']
+            return img,(int(anchor[0]*scale),int(anchor[1]*scale))
         vb=meta.get('viewbox',[320,220]); anchor=meta.get('tip_anchor_viewbox',[29,176])
         scale=img.shape[1]/float(vb[0])
         return img,(int(anchor[0]*scale),int(anchor[1]*scale))
@@ -258,7 +278,12 @@ def render(spec_path: Path, out_path: Path, audit_override=None):
         if not isinstance(paths, list):
             raise ValueError(f'invalid asset registry entry {name}: expected list of paths')
         assets[name] = paths
-    hand_img, hand_anchor = load_hand(Path(__file__).resolve().parents[1]/'assets'/'feminine-hand-fineline-v1.svg')
+    hand_rel = meta.get('hand_asset')
+    if hand_rel:
+        hand_path = (spec_path.parent / hand_rel).resolve() if not Path(hand_rel).is_absolute() else Path(hand_rel)
+    else:
+        hand_path = Path(__file__).resolve().parents[1]/'assets'/'feminine-hand-fineline-v1.svg'
+    hand_img, hand_anchor = load_hand(hand_path, size=int(meta.get('hand_width',105)))
 
     raw_path = out_path.with_suffix('.raw.mp4')
     vw = cv2.VideoWriter(str(raw_path), cv2.VideoWriter_fourcc(*'mp4v'), FPS, (W,H))
@@ -266,6 +291,7 @@ def render(spec_path: Path, out_path: Path, audit_override=None):
     for scene in spec['scenes']:
         scene_dur = float(scene['duration_s'])
         frame_count = int(round(scene_dur * FPS))
+        action_index = {a.get('id'): a for a in scene['actions'] if a.get('id')}
         path_cache = {}
         for a in scene['actions']:
             if a['type'] == 'path_draw':
