@@ -12,6 +12,8 @@
     "ink": "#303030",
     "show_audit_subtitles": false,
     "timing_source": "srt | estimated_script",
+    "hand_asset": "optional/approved-hand.png",
+    "hand_width": 105,
     "asset_registry": {
       "optional_custom_asset": "relative/path.json"
     }
@@ -32,6 +34,21 @@
   ]
 }
 ```
+
+### Product-approved hand overlay
+
+`meta.hand_asset` is optional. When present, it selects a fixed PNG, WebP, or SVG hand overlay supplied by the higher layer. Relative paths are resolved from the scene-spec file. `meta.hand_width` controls the rendered width in pixels.
+
+For PNG/WebP overlays, place a JSON file beside the asset with the same basename:
+
+```json
+{
+  "native_size": [1448, 1086],
+  "tip_anchor_px": [284, 842]
+}
+```
+
+For SVG overlays, the existing `viewbox` + `tip_anchor_viewbox` metadata remains supported. Layer 1 never generates a hand at runtime; it only renders the fixed approved asset and aligns its calibrated pen-tip anchor to the active drawing endpoint.
 
 ## Generic actions
 
@@ -77,3 +94,4 @@ Timing placeholder.
 - Every action must fit within its scene time window.
 - `actor_follow_path.path_ref` must point to a path in the same scene.
 - mask / wipe / clip-path / opacity reveal / hidden-image keys are forbidden.
+- Product-specific route fidelity and factual grounding belong to the higher product layer, not Layer 1.
